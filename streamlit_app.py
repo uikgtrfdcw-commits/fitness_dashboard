@@ -50,7 +50,8 @@ DAY_COLORS = {
     "第3天：轻量全身+恢复": ("#33691e", "#f1f8e9", "🌿"),
     "第4天：上肢推": ("#ff6f00", "#fff8e1", "🏋️"),
     "第5天：后链+下肢": ("#283593", "#e8eaf6", "🔗"),
-    "周末：动态恢复": ("#880e4f", "#fce4ec", "🧘"),
+    "第6天：灵活性+松解": ("#4a148c", "#f3e5f5", "🧘"),
+    "第7天：完全休息": ("#880e4f", "#fce4ec", "😴"),
 }
 
 TYPE_BADGES = {
@@ -314,8 +315,10 @@ def _get_category_css(val: str) -> str:
         return 'style="background-color:#f3e5f5; color:#6a1b9a;"'
     elif "热身" in val:
         return 'style="background-color:#e0f7fa; color:#00695c;"'
-    elif "恢复" in val or "周末" in val:
+    elif "第7天" in val or "完全休息" in val:
         return 'style="background-color:#fce4ec; color:#880e4f;"'
+    elif "第6天" in val:
+        return 'style="background-color:#f3e5f5; color:#4a148c;"'
     elif "第1天" in val or "第5天" in val:
         return 'style="background-color:#e8eaf6; color:#283593;"'
     elif "第2天" in val:
