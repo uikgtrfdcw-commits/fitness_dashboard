@@ -45,6 +45,7 @@ def get_day_data(df):
 # ============================================================
 DAY_COLORS = {
     "每日通用热身": ("#00695c", "#e0f7fa", "🔥"),
+    "每日练后拉伸": ("#5d4037", "#efebe9", "🧘"),
     "第1天：下肢+核心": ("#283593", "#e8eaf6", "🦵"),
     "第2天：上肢拉": ("#004d40", "#e0f2f1", "💪"),
     "第3天：轻量全身+恢复": ("#33691e", "#f1f8e9", "🌿"),
@@ -313,6 +314,8 @@ def _get_category_css(val: str) -> str:
         return 'style="background-color:#e3f2fd; color:#1565c0;"'
     elif "原则" in val or "📋" in val:
         return 'style="background-color:#f3e5f5; color:#6a1b9a;"'
+    elif "练后拉伸" in val:
+        return 'style="background-color:#efebe9; color:#5d4037;"'
     elif "热身" in val:
         return 'style="background-color:#e0f7fa; color:#00695c;"'
     elif "第7天" in val or "完全休息" in val:
