@@ -230,6 +230,60 @@ def render_mobile_lib(df):
 
 
 # ============================================================
+# 训练笔记渲染
+# ============================================================
+PRIORITY_STYLE = {
+    "高": ("#c62828", "#fff0f0"),
+    "中": ("#e65100", "#fff3e0"),
+    "低": ("#2e7d32", "#e8f5e9"),
+}
+
+STATUS_STYLE = {
+    "执行中": ("#1565c0", "#e3f2fd"),
+    "已修正": ("#2e7d32", "#e8f5e9"),
+    "观察中": ("#f57f17", "#fffde7"),
+    "每次练前": ("#6a1b9a", "#f3e5f5"),
+    "条件跳过": ("#e65100", "#fff3e0"),
+    "长期执行": ("#00695c", "#e0f7fa"),
+    "备选方案": ("#546e7a", "#eceff1"),
+    "推荐使用": ("#2e7d32", "#e8f5e9"),
+    "谨慎使用": ("#e65100", "#fff3e0"),
+}
+
+
+def _badge(text, color, bg):
+    return f'<span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600;color:{color};background:{bg};">{text}</span>'
+
+
+def render_mobile_notes(df):
+    for _, row in df.iterrows():
+        date = str(row.get("日期", ""))
+        name = str(row.get("动作名称", ""))
+        problem = str(row.get("问题发现", ""))
+        fix = str(row.get("修正建议", ""))
+        priority = str(row.get("优先级", "")).strip()
+        status = str(row.get("状态", "")).strip()
+
+        p_color, p_bg = PRIORITY_STYLE.get(priority, ("#333", "#f5f5f5"))
+        s_color, s_bg = STATUS_STYLE.get(status, ("#333", "#f5f5f5"))
+
+        is_general = name.startswith("[")
+        border_color = "#00695c" if is_general else p_color
+
+        card = f'''
+        <div style="border-left:4px solid {border_color};background:white;border-radius:8px;padding:14px 16px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <span style="font-size:15px;font-weight:700;color:#1a1a2e;">{name}</span>
+                {_badge(priority, p_color, p_bg)}
+            </div>
+            <div style="font-size:12px;color:#888;margin-bottom:6px;">{date} {_badge(status, s_color, s_bg)}</div>
+            <div style="font-size:13px;color:#c62828;background:#fff0f0;padding:8px 10px;border-radius:6px;margin-bottom:6px;line-height:1.6;">⚠️ {problem}</div>
+            <div style="font-size:13px;color:#2e7d32;background:#e8f5e9;padding:8px 10px;border-radius:6px;line-height:1.6;">✅ {fix}</div>
+        </div>'''
+        st.markdown(card, unsafe_allow_html=True)
+
+
+# ============================================================
 # 电脑端：表格渲染（保留原有逻辑）
 # ============================================================
 def render_table_with_rowspan(df: pd.DataFrame, merge_col: int = 0) -> str:
@@ -425,11 +479,12 @@ else:
 try:
     gc = _get_client()
 
-    tab1, tab2, tab3, tab4 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "📅 训练计划",
         "📚 动作库",
         "🏥 身体状况",
         "📝 备注",
+        "🔬 训练笔记",
     ])
 
     # --- Tab 1: 周训练计划 ---
@@ -447,8 +502,8 @@ try:
                     unsafe_allow_html=True,
                 )
 
-                # 排除"每日通用热身"，单独显示
-                training_days = [d for d in day_names if "热身" not in d]
+                # 排除"每日通用热身"和"每日练后拉伸"，单独显示
+                training_days = [d for d in day_names if "热身" not in d and "练后拉伸" not in d]
                 selected_day = st.selectbox(
                     "训练日",
                     options=training_days,
@@ -462,6 +517,12 @@ try:
                 if warmup_key:
                     with st.expander("🔥 每日通用热身（点击展开）", expanded=False):
                         render_mobile_day(warmup_key[0], day_data[warmup_key[0]], header)
+
+                # 显示练后拉伸
+                stretch_key = [d for d in day_names if "练后拉伸" in d]
+                if stretch_key:
+                    with st.expander("🧘 每日练后拉伸（点击展开）", expanded=False):
+                        render_mobile_day(stretch_key[0], day_data[stretch_key[0]], header)
 
                 # 显示选中的训练日
                 if selected_day in day_data:
@@ -541,6 +602,35 @@ try:
                         st.markdown(f"**{topic}**：{content}")
         else:
             st.info("无数据")
+
+    # --- Tab 5: 训练笔记 ---
+    with tab5:
+        df_tnotes = load_sheet(gc, "训练笔记")
+        if not df_tnotes.empty:
+            if is_mobile:
+                # 筛选器
+                priorities = df_tnotes["优先级"].unique().tolist() if "优先级" in df_tnotes.columns else []
+                sel_pri = st.selectbox("按优先级筛选", ["全部"] + priorities, key="note_pri")
+                if sel_pri != "全部":
+                    df_tnotes = df_tnotes[df_tnotes["优先级"] == sel_pri]
+                render_mobile_notes(df_tnotes)
+            else:
+                # 电脑端：筛选 + 表格
+                col_a, col_b = st.columns(2)
+                with col_a:
+                    priorities = df_tnotes["优先级"].unique().tolist() if "优先级" in df_tnotes.columns else []
+                    sel_pri = st.multiselect("按优先级筛选", priorities, default=priorities, key="note_pri_d")
+                with col_b:
+                    statuses = df_tnotes["状态"].unique().tolist() if "状态" in df_tnotes.columns else []
+                    sel_sta = st.multiselect("按状态筛选", statuses, default=statuses, key="note_sta_d")
+                df_tnotes = df_tnotes[
+                    df_tnotes["优先级"].isin(sel_pri) & df_tnotes["状态"].isin(sel_sta)
+                ]
+                html = render_simple_table(df_tnotes)
+                st.markdown(html, unsafe_allow_html=True)
+                st.caption(f"共 {len(df_tnotes)} 条训练笔记")
+        else:
+            st.info("无训练笔记")
 
 except Exception as e:
     st.error(f"连接失败：{e}")
